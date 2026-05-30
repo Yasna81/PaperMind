@@ -5,6 +5,16 @@ A mobile-friendly AI-powered academic paper reader. Search PubMed for recent pub
 **[→ Open PaperMind](https://yasna81.github.io/PaperMind/)**
 ---
 
+
+
+<img width="956" height="883" alt="image" src="https://github.com/user-attachments/assets/1e564379-b2e5-4357-bae5-fa8a217c6548" />
+
+
+
+
+
+
+
 ## Features
 
 - **PubMed Search** — search by keywords and filter by relevance or date (2022+), up to 30 results
