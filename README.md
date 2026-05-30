@@ -7,7 +7,7 @@ A mobile-friendly AI-powered academic paper reader. Search PubMed for recent pub
 
 
 
-<img width="956" height="883" alt="image" src="https://github.com/user-attachments/assets/1e564379-b2e5-4357-bae5-fa8a217c6548" />
+<img width="556" height="483" alt="image" src="https://github.com/user-attachments/assets/1e564379-b2e5-4357-bae5-fa8a217c6548" />
 
 
 
@@ -42,6 +42,13 @@ Option A — **GitHub Pages (recommended for mobile):**
 
 Option B — **Local use:**
 Just open `index.html` directly in any browser. No server needed.
+
+
+Note : make sure to save api setting and test your keys before searching.
+
+
+<img width="353" height="248" alt="image" src="https://github.com/user-attachments/assets/da2b3574-7ace-4ef5-bc9c-e6a7b2d24b7c" />
+
 
 ---
 
