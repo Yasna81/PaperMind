@@ -58,7 +58,7 @@ Pure HTML + CSS + JavaScript. No frameworks, no build step, no dependencies to i
 ```bash
 git clone https://github.com/YOUR-USERNAME/papermind.git
 cd papermind
-# چ
+# 
 mv paper-reader.html index.html
 git add .
 git commit -m "Initial commit"
