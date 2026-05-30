@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>PaperMind — AI Paper Reader</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500&family=IBM+Plex+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0d0d0f; --surface: #17171b; --surface2: #1e1e24;
+  --border: rgba(255,255,255,0.08); --border2: rgba(255,255,255,0.14);
+  --text: #f0ede8; --muted: #888580; --accent: #c9a96e; --accent2: #7fb3a8;
+  --danger: #e05757; --success: #4caf50;
+  --font-serif: 'Playfair Display', Georgia, serif;
+  --font-sans: 'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+  --r: 10px; --r-lg: 16px;
+}
+body { background:var(--bg); color:var(--text); font-family:var(--font-sans); font-size:15px; line-height:1.6; min-height:100dvh; display:flex; flex-direction:column; }
+
+header { padding:16px 20px 12px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; background:var(--bg); position:sticky; top:0; z-index:100; }
+.logo { font-family:var(--font-serif); font-size:20px; font-weight:600; color:var(--accent); }
+.logo span { color:var(--muted); font-weight:400; font-size:13px; }
+.header-btns { display:flex; gap:8px; }
+.hbtn { background:none; border:1px solid var(--border2); color:var(--muted); border-radius:8px; padding:5px 11px; font-family:var(--font-sans); font-size:12px; cursor:pointer; transition:all 0.15s; }
+.hbtn:hover, .hbtn.active { border-color:var(--accent); color:var(--accent); }
+
+main { flex:1; overflow-y:auto; }
+.screen { display:none; padding:20px; }
+.screen.active { display:block; }
+
+/* ---- BUTTONS ---- */
+.btn { display:inline-flex; align-items:center; justify-content:center; gap:7px; background:var(--accent); color:#1a1200; border:none; border-radius:var(--r); padding:11px 20px; font-family:var(--font-sans); font-size:14px; font-weight:500; cursor:pointer; transition:opacity 0.15s, transform 0.1s; width:100%; }
+.btn:hover { opacity:0.9; } .btn:active { transform:scale(0.98); } .btn:disabled { opacity:0.35; cursor:not-allowed; }
+.btn.secondary { background:var(--surface2); color:var(--text); border:1px solid var(--border2); }
+.btn.ghost { background:none; color:var(--muted); border:1px solid var(--border); }
+
+/* ---- FORMS ---- */
+label { display:block; font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:5px; }
+input[type=text], input[type=password], input[type=search], select, textarea { width:100%; background:var(--surface2); border:1px solid var(--border2); border-radius:var(--r); padding:10px 14px; color:var(--text); font-family:var(--font-sans); font-size:14px; outline:none; transition:border-color 0.15s; }
+input:focus, select:focus, textarea:focus { border-color:var(--accent); }
+select { cursor:pointer; }
+.field-group { margin-bottom:14px; }
+
+/* ---- SETTINGS ---- */
+.settings-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); padding:20px; margin-bottom:16px; }
+.settings-card h2 { font-family:var(--font-serif); font-size:17px; margin-bottom:14px; }
+.back-btn { background:none; border:none; color:var(--muted); font-size:22px; cursor:pointer; padding:0 4px; }
+
+/* ---- HOME / SEARCH ---- */
+.hero { text-align:center; padding:24px 10px 20px; }
+.hero h1 { font-family:var(--font-serif); font-size:26px; margin-bottom:6px; }
+.hero p { color:var(--muted); font-size:13px; line-height:1.5; }
+
+.search-box { display:flex; gap:8px; margin-bottom:20px; }
+.search-box input { flex:1; }
+.search-btn { flex-shrink:0; width:44px; height:44px; background:var(--accent); border:none; border-radius:var(--r); color:#1a1200; font-size:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:opacity 0.15s; }
+.search-btn:hover { opacity:0.85; }
+.search-btn:disabled { opacity:0.35; cursor:not-allowed; }
+
+.sort-row { display:flex; gap:8px; align-items:center; margin-bottom:14px; font-size:12px; color:var(--muted); flex-wrap:wrap; }
+.sort-chip { background:var(--surface2); border:1px solid var(--border); border-radius:20px; padding:4px 11px; cursor:pointer; font-size:12px; transition:all 0.15s; }
+.sort-chip.active { background:var(--accent); color:#1a1200; border-color:var(--accent); }
+
+.paper-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); padding:16px; margin-bottom:12px; transition:border-color 0.2s; }
+.paper-card:hover { border-color:var(--border2); }
+.paper-card .ptitle { font-family:var(--font-serif); font-size:15px; color:var(--text); line-height:1.4; margin-bottom:6px; }
+.paper-card .pmeta { font-size:11px; color:var(--muted); margin-bottom:8px; display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+.pmeta .journal { color:var(--accent2); }
+.pmeta .year { background:var(--surface2); border-radius:4px; padding:1px 6px; }
+.paper-card .pabstract { font-size:12.5px; color:var(--muted); line-height:1.6; max-height:60px; overflow:hidden; position:relative; transition:max-height 0.3s; }
+.paper-card .pabstract.expanded { max-height:600px; }
+.paper-card .pabstract::after { content:''; position:absolute; bottom:0; left:0; right:0; height:24px; background:linear-gradient(transparent, var(--surface)); pointer-events:none; transition:opacity 0.3s; }
+.paper-card .pabstract.expanded::after { opacity:0; }
+
+.card-actions { display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
+.card-btn { flex:1; min-width:0; background:var(--surface2); border:1px solid var(--border2); border-radius:8px; padding:8px 10px; font-size:12px; color:var(--muted); cursor:pointer; transition:all 0.15s; text-align:center; white-space:nowrap; }
+.card-btn:hover { border-color:var(--accent); color:var(--accent); }
+.card-btn.highlight { border-color:var(--accent2); color:var(--accent2); font-weight:500; }
+.card-btn.highlight:hover { background:var(--accent2); color:#0a1f1c; }
+
+.insight-box { margin-top:12px; background:var(--surface2); border:1px solid var(--border2); border-left:2px solid var(--accent2); border-radius:0 var(--r) var(--r) 0; padding:13px 15px; font-size:13px; color:var(--text); line-height:1.7; display:none; }
+.insight-box.visible { display:block; }
+.insight-box .loading { color:var(--muted); display:flex; align-items:center; gap:8px; }
+.insight-box .insight-label { font-size:10px; text-transform:uppercase; letter-spacing:0.07em; color:var(--accent2); margin-bottom:6px; font-weight:500; }
+
+.no-results { text-align:center; padding:40px 20px; color:var(--muted); font-size:14px; }
+.no-results .icon { font-size:36px; margin-bottom:10px; }
+
+/* ---- PAPER READER SCREEN ---- */
+#paper-screen { padding:0; }
+.paper-header { padding:14px 20px; border-bottom:1px solid var(--border); background:var(--bg); position:sticky; top:57px; z-index:90; }
+.paper-title-sm { font-family:var(--font-serif); font-size:14px; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:8px; }
+.action-chips { display:flex; gap:7px; overflow-x:auto; padding-bottom:2px; }
+.action-chips::-webkit-scrollbar { display:none; }
+.action-chip { background:var(--surface2); border:1px solid var(--border2); border-radius:20px; padding:5px 12px; font-size:12px; color:var(--muted); cursor:pointer; transition:all 0.15s; white-space:nowrap; flex-shrink:0; }
+.action-chip:hover { border-color:var(--accent); color:var(--accent); }
+
+.chat-area { padding:16px 20px; display:flex; flex-direction:column; gap:14px; }
+.msg.assistant .bubble { background:var(--surface); border:1px solid var(--border); border-radius:4px 14px 14px 14px; padding:13px 15px; font-size:14px; line-height:1.7; }
+.msg.user .bubble { background:var(--surface2); border:1px solid var(--border2); border-radius:14px 4px 14px 14px; padding:9px 13px; font-size:14px; color:var(--muted); margin-left:30px; }
+.msg-label { font-size:10px; color:var(--muted); margin-bottom:4px; text-transform:uppercase; letter-spacing:0.05em; }
+.msg.user .msg-label { text-align:right; }
+.msg.assistant .bubble h3 { font-size:14px; font-weight:500; color:var(--accent); margin:10px 0 4px; }
+.msg.assistant .bubble p { margin-bottom:7px; }
+.msg.assistant .bubble p:last-child { margin-bottom:0; }
+.msg.assistant .bubble ul, .msg.assistant .bubble ol { margin:5px 0 7px 16px; }
+.msg.assistant .bubble li { margin-bottom:3px; font-size:14px; }
+.msg.assistant .bubble strong { color:var(--accent2); font-weight:500; }
+.msg.assistant .bubble code { font-family:var(--font-mono); background:var(--surface2); border-radius:4px; padding:1px 5px; font-size:12px; }
+
+.typing-dot { display:inline-block; width:6px; height:6px; background:var(--accent); border-radius:50%; animation:pulse 1.2s ease-in-out infinite; margin:0 2px; }
+.typing-dot:nth-child(2) { animation-delay:0.2s; } .typing-dot:nth-child(3) { animation-delay:0.4s; }
+@keyframes pulse { 0%,60%,100%{opacity:0.2} 30%{opacity:1} }
+
+.chat-input-area { padding:10px 14px 18px; background:var(--bg); border-top:1px solid var(--border); position:sticky; bottom:0; display:flex; gap:8px; align-items:flex-end; }
+#chat-input { flex:1; background:var(--surface); border:1px solid var(--border2); border-radius:12px; padding:10px 13px; color:var(--text); font-family:var(--font-sans); font-size:14px; outline:none; resize:none; min-height:42px; max-height:120px; overflow-y:auto; transition:border-color 0.15s; line-height:1.5; }
+#chat-input:focus { border-color:var(--accent); }
+#send-btn { background:var(--accent); border:none; color:#1a1200; width:40px; height:40px; border-radius:10px; cursor:pointer; font-size:18px; display:flex; align-items:center; justify-content:center; transition:opacity 0.15s; flex-shrink:0; }
+#send-btn:disabled { opacity:0.3; cursor:not-allowed; }
+
+/* ---- SPINNER ---- */
+.spinner-wrap { text-align:center; padding:40px 20px; color:var(--muted); font-size:13px; }
+.spinner { width:28px; height:28px; border:2px solid var(--border2); border-top-color:var(--accent); border-radius:50%; animation:spin 0.7s linear infinite; margin:0 auto 12px; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* ---- TOAST ---- */
+.toast { position:fixed; bottom:72px; left:50%; transform:translateX(-50%) translateY(8px); background:var(--surface2); border:1px solid var(--border2); border-radius:8px; padding:9px 16px; font-size:13px; color:var(--text); opacity:0; pointer-events:none; transition:opacity 0.2s, transform 0.2s; z-index:999; white-space:nowrap; max-width:90vw; overflow:hidden; text-overflow:ellipsis; }
+.toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+.toast.error { border-color:var(--danger); color:var(--danger); }
+
+.or-div { display:flex; align-items:center; gap:10px; margin:14px 0; color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:0.05em; }
+.or-div::before, .or-div::after { content:''; flex:1; height:1px; background:var(--border); }
+
+.input-zone { background:var(--surface); border:1px dashed var(--border2); border-radius:var(--r-lg); padding:18px; margin-bottom:14px; cursor:pointer; text-align:center; transition:border-color 0.2s; position:relative; }
+.input-zone:hover { border-color:var(--accent); }
+.input-zone input[type=file] { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
+.input-zone p { color:var(--muted); font-size:13px; margin-bottom:3px; }
+.input-zone small { color:var(--border2); font-size:11px; }
+
+.results-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+.results-header h3 { font-family:var(--font-serif); font-size:16px; }
+.results-count { font-size:12px; color:var(--muted); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">PaperMind <span>AI Reader</span></div>
+  <div class="header-btns">
+    <button class="hbtn" onclick="showScreen('search-screen')" id="nav-search">🔍 Search</button>
+    <button class="hbtn" onclick="showScreen('upload-screen')" id="nav-upload">📄 Upload</button>
+    <button class="hbtn" onclick="showScreen('settings-screen')" id="nav-settings">⚙</button>
+  </div>
+</header>
+
+<main>
+
+<!-- ===== SEARCH SCREEN ===== -->
+<div id="search-screen" class="screen active">
+  <div class="hero">
+    <h1>Explore Research</h1>
+    <p>Search PubMed for recent papers<br>and dive deep with AI</p>
+  </div>
+
+  <div class="search-box">
+    <input type="search" id="search-input" placeholder="e.g. CRISPR cancer therapy 2024" onkeydown="if(event.key==='Enter') doSearch()">
+    <button class="search-btn" id="search-btn" onclick="doSearch()">→</button>
+  </div>
+
+  <div class="sort-row" id="sort-row" style="display:none">
+    <span>Sort:</span>
+    <div class="sort-chip active" onclick="setSort('relevance',this)">Relevance</div>
+    <div class="sort-chip" onclick="setSort('pub_date',this)">Most Recent</div>
+    <span style="margin-left:auto">
+      <select id="count-select" onchange="doSearch()" style="width:auto; padding:4px 8px; font-size:12px;">
+        <option value="10">10 results</option>
+        <option value="20" selected>20 results</option>
+        <option value="30">30 results</option>
+      </select>
+    </span>
+  </div>
+
+  <div id="search-results"></div>
+</div>
+
+<!-- ===== UPLOAD SCREEN ===== -->
+<div id="upload-screen" class="screen">
+  <div style="margin-bottom:20px;">
+    <h2 style="font-family:var(--font-serif); font-size:20px; margin-bottom:6px;">Upload a Paper</h2>
+    <p style="color:var(--muted); font-size:13px;">Upload a PDF or paste text to start chatting</p>
+  </div>
+
+  <div class="input-zone" id="drop-zone">
+    <input type="file" id="file-input" accept=".pdf,.txt" onchange="handleFile(event)">
+    <p>📄 Tap to upload PDF or TXT</p>
+    <small>Up to ~40 pages</small>
+  </div>
+
+  <div class="or-div">or paste text</div>
+
+  <div class="field-group">
+    <textarea id="paste-input" placeholder="Paste abstract or full paper text…" style="height:90px; resize:none; font-size:14px;"></textarea>
+  </div>
+  <div class="field-group">
+    <input type="text" id="paper-title-input" placeholder="Paper title (optional)">
+  </div>
+  <button class="btn" onclick="loadUploadedPaper()">Load Paper →</button>
+</div>
+
+<!-- ===== SETTINGS SCREEN ===== -->
+<div id="settings-screen" class="screen">
+  <div style="margin-bottom:20px;">
+    <h2 style="font-family:var(--font-serif); font-size:20px;">Settings</h2>
+  </div>
+
+  <div class="settings-card">
+    <h2>OpenRouter API Key</h2>
+    <div class="field-group">
+      <label>API Key</label>
+      <input type="password" id="api-key-input" placeholder="sk-or-v1-…">
+    </div>
+    <p style="font-size:12px; color:var(--muted); margin-bottom:12px;">Stored only in this browser. Get yours at openrouter.ai/keys</p>
+    <button class="btn" onclick="saveSettings()" style="margin-bottom:8px;">Save Settings</button>
+    <button class="btn secondary" onclick="testKey()">Test Key →</button>
+    <div id="key-test-result" style="margin-top:10px; font-size:13px; display:none;"></div>
+  </div>
+
+  <div class="settings-card">
+    <h2>Model</h2>
+    <div class="field-group">
+      <label>Choose Model</label>
+      <select id="model-select">
+        <optgroup label="⚡ DeepSeek">
+          <option value="deepseek/deepseek-chat-v3-5">DeepSeek V3.5 (fast, cheap)</option>
+          <option value="deepseek/deepseek-r1">DeepSeek R1 (reasoning)</option>
+          <option value="deepseek/deepseek-r1-0528">DeepSeek R1-0528 (latest)</option>
+        </optgroup>
+        <optgroup label="🌀 Google Gemini">
+          <option value="google/gemini-2.5-flash-preview:thinking">Gemini 2.5 Flash Thinking</option>
+          <option value="google/gemini-2.5-flash-preview">Gemini 2.5 Flash</option>
+          <option value="google/gemini-2.0-flash-001">Gemini 2.0 Flash</option>
+        </optgroup>
+        <optgroup label="🔵 Anthropic Claude">
+          <option value="anthropic/claude-sonnet-4-5">Claude Sonnet 4.5</option>
+          <option value="anthropic/claude-3.5-haiku">Claude 3.5 Haiku (fast)</option>
+        </optgroup>
+        <optgroup label="🟢 OpenAI">
+          <option value="openai/gpt-4o-mini">GPT-4o Mini</option>
+          <option value="openai/gpt-4o">GPT-4o</option>
+        </optgroup>
+        <optgroup label="🆓 Free Tier">
+          <option value="deepseek/deepseek-r1:free">DeepSeek R1 (free)</option>
+          <option value="deepseek/deepseek-chat-v3-5:free">DeepSeek V3.5 (free)</option>
+          <option value="meta-llama/llama-3.3-70b-instruct:free">Llama 3.3 70B (free)</option>
+          <option value="mistralai/mistral-7b-instruct:free">Mistral 7B (free)</option>
+        </optgroup>
+      </select>
+    </div>
+  </div>
+</div>
+
+<!-- ===== PAPER CHAT SCREEN ===== -->
+<div id="paper-screen" class="screen" style="padding:0;">
+  <div class="paper-header">
+    <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+      <button class="back-btn" id="paper-back-btn" onclick="goBackFromPaper()">←</button>
+      <div class="paper-title-sm" id="paper-title-display">Paper</div>
+    </div>
+    <div class="action-chips">
+      <div class="action-chip" onclick="quickAction('snapshot')">⚡ Quick Snapshot</div>
+      <div class="action-chip" onclick="quickAction('summarize')">📋 Summary</div>
+      <div class="action-chip" onclick="quickAction('findings')">🔬 Findings</div>
+      <div class="action-chip" onclick="quickAction('methods')">⚙ Methods</div>
+      <div class="action-chip" onclick="quickAction('eli5')">🧒 Simplify</div>
+      <div class="action-chip" onclick="quickAction('critique')">🎯 Critique</div>
+      <div class="action-chip" onclick="quickAction('cite')">📎 Citation</div>
+    </div>
+  </div>
+  <div class="chat-area" id="chat-area"></div>
+  <div class="chat-input-area">
+    <textarea id="chat-input" placeholder="Ask anything about this paper…" rows="1" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+    <button id="send-btn" onclick="sendMessage()">↑</button>
+  </div>
+</div>
+
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── State ──────────────────────────────────────────
+let paperText = '';
+let paperTitle = '';
+let paperPMID = '';
+let chatHistory = [];
+let isLoading = false;
+let currentSort = 'relevance';
+let lastSearchResults = [];
+let paperSourceScreen = 'search-screen';
+
+// ── Settings ───────────────────────────────────────
+function getSettings() {
+  return {
+    apiKey: localStorage.getItem('or_key') || '',
+    model: localStorage.getItem('or_model') || 'deepseek/deepseek-chat-v3-5'
+  };
+}
+function saveSettings() {
+  localStorage.setItem('or_key', document.getElementById('api-key-input').value.trim());
+  localStorage.setItem('or_model', document.getElementById('model-select').value);
+  showToast('Settings saved ✓');
+}
+async function testKey() {
+  const key = document.getElementById('api-key-input').value.trim() || getSettings().apiKey;
+  const model = document.getElementById('model-select').value || getSettings().model;
+  const el = document.getElementById('key-test-result');
+  el.style.display = 'block'; el.style.color = 'var(--muted)'; el.textContent = 'Testing…';
+  try {
+    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':`Bearer ${key}`,'HTTP-Referer':'https://papermind.app','X-Title':'PaperMind'},
+      body:JSON.stringify({ model, messages:[{role:'user',content:'Say OK'}], max_tokens:5 })
+    });
+    const data = await res.json();
+    if (data.error) { el.style.color='var(--danger)'; el.textContent=`❌ ${res.status}: ${data.error.message}`; }
+    else { el.style.color='var(--success)'; el.textContent=`✅ Working! Model: ${model}`; }
+  } catch(e) { el.style.color='var(--danger)'; el.textContent='❌ Network error: '+e.message; }
+}
+
+// ── Navigation ─────────────────────────────────────
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelectorAll('.hbtn').forEach(b => b.classList.remove('active'));
+  const navMap = { 'search-screen':'nav-search','upload-screen':'nav-upload','settings-screen':'nav-settings' };
+  if (navMap[id]) document.getElementById(navMap[id]).classList.add('active');
+  if (id === 'settings-screen') {
+    const s = getSettings();
+    document.getElementById('api-key-input').value = s.apiKey;
+    document.getElementById('model-select').value = s.model;
+  }
+}
+function goBackFromPaper() { showScreen(paperSourceScreen); }
+
+// ── Toast ──────────────────────────────────────────
+function showToast(msg, isError=false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast show' + (isError ? ' error' : '');
+  setTimeout(() => t.className = 'toast', 2800);
+}
+
+// ── PubMed Search ──────────────────────────────────
+function setSort(val, el) {
+  currentSort = val;
+  document.querySelectorAll('.sort-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  doSearch();
+}
+
+async function doSearch() {
+  const q = document.getElementById('search-input').value.trim();
+  if (!q) return;
+  const count = document.getElementById('count-select').value;
+  const resultsDiv = document.getElementById('search-results');
+  document.getElementById('sort-row').style.display = 'flex';
+  resultsDiv.innerHTML = `<div class="spinner-wrap"><div class="spinner"></div>Searching PubMed…</div>`;
+  document.getElementById('search-btn').disabled = true;
+
+  try {
+    // Step 1: esearch — get PMIDs
+    const searchUrl = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=${encodeURIComponent(q)}&retmax=${count}&sort=${currentSort}&retmode=json&datetype=pdat&mindate=2022`;
+    const searchRes = await fetch(searchUrl);
+    const searchData = await searchRes.json();
+    const ids = searchData.esearchresult?.idlist || [];
+
+    if (!ids.length) {
+      resultsDiv.innerHTML = `<div class="no-results"><div class="icon">🔭</div>No results found. Try different keywords.</div>`;
+      document.getElementById('search-btn').disabled = false;
+      return;
+    }
+
+    // Step 2: esummary — get metadata
+    const summaryUrl = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&id=${ids.join(',')}&retmode=json`;
+    const summaryRes = await fetch(summaryUrl);
+    const summaryData = await summaryRes.json();
+    const papers = ids.map(id => {
+      const d = summaryData.result[id];
+      if (!d) return null;
+      return {
+        pmid: id,
+        title: d.title || 'Untitled',
+        authors: (d.authors||[]).slice(0,3).map(a=>a.name).join(', ') + ((d.authors||[]).length > 3 ? ' et al.' : ''),
+        journal: d.source || '',
+        year: d.pubdate ? d.pubdate.slice(0,4) : '',
+        abstract: '',  // fetched on demand
+        doi: (d.articleids||[]).find(x=>x.idtype==='doi')?.value || ''
+      };
+    }).filter(Boolean);
+
+    lastSearchResults = papers;
+    renderResults(papers);
+
+    // Step 3: fetch ALL abstracts in one batch XML call
+    fetchAbstractsBatch(ids, papers);
+
+  } catch(e) {
+    resultsDiv.innerHTML = `<div class="no-results"><div class="icon">⚠️</div>Search failed. Check your connection.</div>`;
+  }
+  document.getElementById('search-btn').disabled = false;
+}
+
+async function fetchAbstractsBatch(ids, papers) {
+  try {
+    const url = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=${ids.join(',')}&rettype=abstract&retmode=xml`;
+    const res = await fetch(url);
+    const xmlText = await res.text();
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(xmlText, 'text/xml');
+    const articles = doc.querySelectorAll('PubmedArticle');
+    articles.forEach(article => {
+      const pmid = article.querySelector('PMID')?.textContent?.trim();
+      if (!pmid) return;
+      const absNodes = article.querySelectorAll('AbstractText');
+      let abs = '';
+      absNodes.forEach(node => {
+        const label = node.getAttribute('Label');
+        const text = node.textContent.trim();
+        if (text) abs += (label ? label + ': ' : '') + text + ' ';
+      });
+      abs = abs.trim();
+      const absEl = document.getElementById('abs-' + pmid);
+      if (absEl) absEl.textContent = abs || 'Abstract not available for this article.';
+      const p = papers.find(x => x.pmid === pmid);
+      if (p) p.abstract = abs;
+    });
+    // Mark any still loading as unavailable
+    papers.forEach(p => {
+      if (!p.abstract) {
+        p.abstract = '';
+        const absEl = document.getElementById('abs-' + p.pmid);
+        if (absEl && absEl.textContent === 'Loading abstract…') {
+          absEl.textContent = 'Abstract not available for this article.';
+        }
+      }
+    });
+  } catch(e) {
+    papers.forEach(p => {
+      const absEl = document.getElementById('abs-' + p.pmid);
+      if (absEl && absEl.textContent === 'Loading abstract…') absEl.textContent = 'Could not load abstract.';
+    });
+  }
+}
+
+function renderResults(papers) {
+  const resultsDiv = document.getElementById('search-results');
+  if (!papers.length) {
+    resultsDiv.innerHTML = `<div class="no-results"><div class="icon">🔭</div>No results.</div>`;
+    return;
+  }
+  resultsDiv.innerHTML = `
+    <div class="results-header">
+      <h3>Results</h3>
+      <span class="results-count">${papers.length} papers</span>
+    </div>
+    ${papers.map((p,i) => `
+    <div class="paper-card" id="card-${p.pmid}">
+      <a class="ptitle" href="https://pubmed.ncbi.nlm.nih.gov/${p.pmid}/" target="_blank" style="display:block; color:inherit; text-decoration:none; cursor:pointer;" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color=''">${escHtml(p.title)} <span style="font-size:11px; color:var(--muted); vertical-align:middle;">↗</span></a>
+      <div class="pmeta">
+        <span>${escHtml(p.authors)}</span>
+        <span class="journal">${escHtml(p.journal)}</span>
+        <span class="year">${p.year}</span>
+      </div>
+      <div class="pabstract" id="abs-${p.pmid}">Loading abstract…</div>
+      <div class="card-actions">
+        <button class="card-btn" onclick="toggleAbstract('${p.pmid}')">▾ Abstract</button>
+        <button class="card-btn highlight" onclick="getInsight('${p.pmid}', this)" id="insight-btn-${p.pmid}">✦ Novelty · Findings · Doors</button>
+        <button class="card-btn" onclick="openPaperChat('${p.pmid}')">💬 Chat</button>
+      </div>
+      <div class="insight-box" id="insight-${p.pmid}"></div>
+    </div>
+    `).join('')}
+  `;
+}
+
+
+function toggleAbstract(pmid) {
+  const el = document.getElementById(`abs-${pmid}`);
+  el.classList.toggle('expanded');
+}
+
+// ── Insight Card ───────────────────────────────────
+async function getInsight(pmid, btn) {
+  const paper = lastSearchResults.find(p => p.pmid === pmid);
+  if (!paper) return;
+  const { apiKey, model } = getSettings();
+  if (!apiKey) { showToast('Add your OpenRouter key in Settings first', true); return; }
+
+  const box = document.getElementById(`insight-${pmid}`);
+  box.classList.add('visible');
+  box.innerHTML = `<div class="insight-label">Analyzing…</div><div class="loading"><div class="spinner" style="width:18px;height:18px;margin:0;"></div> Generating insight…</div>`;
+  btn.disabled = true;
+
+  const context = `Title: ${paper.title}\nAuthors: ${paper.authors}\nJournal: ${paper.journal} (${paper.year})\n\nAbstract: ${paper.abstract || 'Not available'}`;
+  const prompt = `Based on this paper, write exactly ONE concise paragraph (4-6 sentences) covering three things in order: (1) the NOVELTY — what is new or original about this work; (2) the KEY FINDINGS — the main results or conclusions; (3) OPEN DOORS — what future research questions or gaps this opens up. Label each part inline with bold: **Novelty:** ... **Key Findings:** ... **Open Doors:** ... Do not use bullet points. Write as a single flowing paragraph.`;
+
+  try {
+    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':`Bearer ${apiKey}`,'HTTP-Referer':'https://papermind.app','X-Title':'PaperMind'},
+      body:JSON.stringify({
+        model, max_tokens:350, temperature:0.4,
+        messages:[
+          {role:'system', content:'You are a concise academic analyst. You write tight, informative paragraphs about research papers.'},
+          {role:'user', content:`${context}\n\n${prompt}`}
+        ]
+      })
+    });
+    const data = await res.json();
+    if (data.error) {
+      box.innerHTML = `<div class="insight-label">Error</div><span style="color:var(--danger)">❌ ${data.error.message}</span>`;
+    } else {
+      const txt = data.choices[0].message.content.trim();
+      box.innerHTML = `<div class="insight-label">✦ Novelty · Key Findings · Open Doors</div>${insightHTML(txt)}`;
+    }
+  } catch(e) {
+    box.innerHTML = `<div class="insight-label">Error</div><span style="color:var(--danger)">Network error</span>`;
+  }
+  btn.disabled = false;
+}
+
+function insightHTML(txt) {
+  return txt
+    .replace(/\*\*(.+?)\*\*/g, '<strong style="color:var(--accent2)">$1</strong>')
+    .replace(/\n/g, '<br>');
+}
+
+// ── Open Paper Chat from search ────────────────────
+async function openPaperChat(pmid) {
+  const paper = lastSearchResults.find(p => p.pmid === pmid);
+  if (!paper) return;
+  paperSourceScreen = 'search-screen';
+
+  // Make sure abstract is loaded
+  if (!paper.abstract) {
+    showToast('Loading paper…');
+    await fetchAbstract(pmid);
+  }
+
+  paperText = `Title: ${paper.title}\nAuthors: ${paper.authors}\nJournal: ${paper.journal} (${paper.year})\nPMID: ${pmid}\n${paper.doi ? 'DOI: '+paper.doi : ''}\n\nAbstract:\n${paper.abstract}`;
+  paperTitle = paper.title;
+  paperPMID = pmid;
+
+  launchChat();
+}
+
+// ── Upload flow ────────────────────────────────────
+async function handleFile(event) {
+  const file = event.target.files[0]; if (!file) return;
+  if (file.type === 'text/plain') {
+    paperText = await file.text();
+    paperTitle = file.name.replace('.txt','');
+    document.getElementById('paper-title-input').value = paperTitle;
+    showToast('Text loaded ✓'); return;
+  }
+  if (file.type !== 'application/pdf') { showToast('PDF or TXT only', true); return; }
+  showToast('Reading PDF…');
+  if (!window.pdfjsLib) {
+    await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js');
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
+  try {
+    const ab = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({data:ab}).promise;
+    let text = '';
+    for (let i=1; i<=Math.min(pdf.numPages,40); i++) {
+      const page = await pdf.getPage(i);
+      const c = await page.getTextContent();
+      text += c.items.map(x=>x.str).join(' ') + '\n';
+    }
+    paperText = text.slice(0,60000);
+    paperTitle = file.name.replace('.pdf','');
+    document.getElementById('paper-title-input').value = paperTitle;
+    showToast(`PDF read (${pdf.numPages} pages) ✓`);
+  } catch(e) { showToast('Could not read PDF. Try pasting text.', true); }
+}
+
+function loadUploadedPaper() {
+  const pasted = document.getElementById('paste-input').value.trim();
+  if (pasted) paperText = pasted;
+  if (!paperText) { showToast('Upload a file or paste text first', true); return; }
+  const t = document.getElementById('paper-title-input').value.trim();
+  paperTitle = t || 'Uploaded Paper';
+  if (!getSettings().apiKey) { showToast('Add your OpenRouter key in Settings first', true); return; }
+  paperSourceScreen = 'upload-screen';
+  launchChat();
+}
+
+// ── Chat ───────────────────────────────────────────
+function launchChat() {
+  chatHistory = [];
+  document.getElementById('chat-area').innerHTML = '';
+  document.getElementById('paper-title-display').textContent = paperTitle;
+  showScreen('paper-screen');
+  addWelcome();
+}
+
+function addWelcome() {
+  const area = document.getElementById('chat-area');
+  area.innerHTML = `
+    <div style="padding:4px 0 8px;">
+      <div style="font-family:var(--font-serif); font-size:15px; color:var(--text); margin-bottom:4px;">${escHtml(paperTitle)}</div>
+      <div style="font-size:12px; color:var(--muted); margin-bottom:14px;">Paper loaded — ask anything or use a quick action above</div>
+      <div style="display:flex; flex-wrap:wrap; gap:8px;">
+        <div class="card-btn" style="flex:none;" onclick="quickAction('snapshot')">⚡ Quick Snapshot</div>
+        <div class="card-btn" style="flex:none;" onclick="quickAction('eli5')">🧒 Explain Simply</div>
+        <div class="card-btn" style="flex:none;" onclick="quickAction('findings')">🔬 Key Findings</div>
+        <div class="card-btn" style="flex:none;" onclick="quickAction('critique')">🎯 Critique</div>
+      </div>
+    </div>
+  `;
+}
+
+function quickAction(action) {
+  const prompts = {
+    snapshot: 'In one paragraph, tell me the novelty of this paper, its key findings, and what future research doors it opens. Label each with bold: **Novelty:** **Key Findings:** **Open Doors:**',
+    summarize: 'Give me a structured summary: motivation, methods, results, and conclusions.',
+    findings: 'What are the key findings and results? List them clearly.',
+    methods: 'Explain the methodology and approach used.',
+    eli5: 'Explain this paper to a smart high-schooler with no domain expertise. Use analogies.',
+    critique: 'What are the strengths and weaknesses? Is the methodology sound?',
+    cite: 'Extract citation info (authors, title, journal, year, DOI) in APA format.'
+  };
+  document.getElementById('chat-input').value = prompts[action];
+  sendMessage();
+}
+
+function addMessage(role, content, html=false) {
+  const area = document.getElementById('chat-area');
+  const msg = document.createElement('div');
+  msg.className = `msg ${role}`;
+  const label = role === 'assistant' ? 'PaperMind' : 'You';
+  if (html) {
+    msg.innerHTML = `<div class="msg-label">${label}</div><div class="bubble">${content}</div>`;
+  } else {
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.textContent = content;
+    msg.innerHTML = `<div class="msg-label">${label}</div>`;
+    msg.appendChild(bubble);
+  }
+  area.appendChild(msg);
+  area.scrollTop = area.scrollHeight;
+  return msg;
+}
+
+function addTypingIndicator() {
+  const area = document.getElementById('chat-area');
+  const msg = document.createElement('div');
+  msg.id = 'typing'; msg.className = 'msg assistant';
+  msg.innerHTML = `<div class="msg-label">PaperMind</div><div class="bubble"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></div>`;
+  area.appendChild(msg); area.scrollTop = area.scrollHeight;
+}
+function removeTypingIndicator() { const t=document.getElementById('typing'); if(t)t.remove(); }
+
+function autoResize(el) { el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,120)+'px'; }
+function handleKey(e) { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage();} }
+
+async function sendMessage() {
+  if (isLoading) return;
+  const input = document.getElementById('chat-input');
+  const text = input.value.trim(); if(!text) return;
+  const { apiKey, model } = getSettings();
+  if (!apiKey) { showToast('Configure your OpenRouter key in Settings', true); return; }
+
+  input.value = ''; input.style.height='auto';
+  isLoading = true; document.getElementById('send-btn').disabled = true;
+  addMessage('user', text);
+  chatHistory.push({role:'user', content:text});
+  addTypingIndicator();
+
+  const systemPrompt = `You are an expert academic assistant. The user is reading a research paper. Answer clearly, accurately, and helpfully. Use markdown when useful (bold key terms, bullet points, headers). Be concise but thorough.
+
+--- PAPER: ${paperTitle} ---
+${paperText.slice(0,55000)}
+--- END ---`;
+
+  const msgs = [...chatHistory.slice(0,-1).slice(-8), {role:'user',content:text}];
+
+  try {
+    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':`Bearer ${apiKey}`,'HTTP-Referer':'https://papermind.app','X-Title':'PaperMind'},
+      body:JSON.stringify({ model, max_tokens:1500, temperature:0.3,
+        messages:[{role:'system',content:systemPrompt},...msgs] })
+    });
+    const data = await res.json();
+    removeTypingIndicator();
+    if (data.error) {
+      const hint = res.status===401 ? '\n\n💡 Check your API key in Settings.' : res.status===402 ? '\n\n💡 Add credits at openrouter.ai/credits.' : '';
+      addMessage('assistant', `⚠️ ${res.status}: ${data.error.message}${hint}`, false);
+      chatHistory.pop();
+    } else {
+      const reply = data.choices[0].message.content;
+      chatHistory.push({role:'assistant',content:reply});
+      addMessage('assistant', mdToHTML(reply), true);
+    }
+  } catch(e) {
+    removeTypingIndicator();
+    addMessage('assistant','⚠️ Network error. Check your connection.',false);
+    chatHistory.pop();
+  }
+  isLoading=false; document.getElementById('send-btn').disabled=false;
+}
+
+function mdToHTML(md) {
+  return md
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g,'<em>$1</em>')
+    .replace(/`(.+?)`/g,'<code>$1</code>')
+    .replace(/^#{1,3} (.+)$/gm,'<h3>$1</h3>')
+    .replace(/^\- (.+)$/gm,'<li>$1</li>')
+    .replace(/^(\d+)\. (.+)$/gm,'<li>$2</li>')
+    .replace(/(<li>[\s\S]+?<\/li>)/g,'<ul>$1</ul>')
+    .split('\n\n').map(b=>b.startsWith('<')?b:`<p>${b.replace(/\n/g,'<br>')}</p>`).join('');
+}
+
+function escHtml(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function loadScript(src) {
+  return new Promise((res,rej)=>{ const s=document.createElement('script'); s.src=src; s.onload=res; s.onerror=rej; document.head.appendChild(s); });
+}
+
+// Init
+(function(){ if(!getSettings().apiKey) setTimeout(()=>showToast('⚙ Add your OpenRouter key in Settings'),700); })();
+</script>
+</body>
+</html>
