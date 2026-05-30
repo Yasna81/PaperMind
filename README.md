@@ -6,8 +6,7 @@
 
 A mobile-friendly AI-powered academic paper reader. Search PubMed for recent publications, get instant AI insights, and chat with any paper, all from your phone browser.
 
-**[→ Open PaperMind](https://YOUR-USERNAME.github.io/papermind/)** *(replace with your GitHub Pages URL after deploying)*
-
+**[→ Open PaperMind](https://yasna81.github.io/PaperMind/)**
 ---
 
 ## Features
