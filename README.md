@@ -1,7 +1,3 @@
-# PaperMind
- mobile-friendly AI-powered academic paper reader
-
-
 # PaperMind 📄✦
 
 A mobile-friendly AI-powered academic paper reader. Search PubMed for recent publications, get instant AI insights, and chat with any paper, all from your phone browser.
